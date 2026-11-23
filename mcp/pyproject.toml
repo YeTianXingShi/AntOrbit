@@ -1,0 +1,30 @@
+[project]
+name = "antorbit-mcp"
+version = "0.1.0"
+description = "Local stdio MCP server for publishing websites and sending notifications via AntOrbit"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.2.0",
+    "httpx>=0.28.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "respx>=0.21.1",
+]
+
+[project.scripts]
+antorbit-mcp = "antorbit_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["antorbit_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

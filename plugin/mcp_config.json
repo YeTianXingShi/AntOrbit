@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "antorbit": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/YeTianXingShi/AntOrbit.git#subdirectory=mcp",
+        "antorbit-mcp"
+      ],
+      "env": {
+        "ANTORBIT_URL": "https://your-antorbit-host.example.com",
+        "ANTORBIT_API_KEY": "ao_replace_with_your_api_key"
+      }
+    }
+  }
+}

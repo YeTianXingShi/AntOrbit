@@ -1,0 +1,13 @@
+{
+  "name": "antorbit",
+  "displayName": "AntOrbit",
+  "version": "0.1.0",
+  "description": "Publish static/interactive websites to your self-hosted AntOrbit server and send push notifications via Bark or ntfy.",
+  "logo": "assets/logo.svg",
+  "repository": "https://github.com/YeTianXingShi/AntOrbit",
+  "suggestedPrompts": [
+    "Build an interactive dashboard page, publish it to AntOrbit, and push the link to my phone",
+    "Create an approval page with a feedback form on AntOrbit and notify me when ready",
+    "Send me a Bark/ntfy notification once the current task finishes"
+  ]
+}

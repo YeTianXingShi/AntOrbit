@@ -1,0 +1,17 @@
+services:
+  antorbit:
+    image: ghcr.io/yetianxingshi/antorbit:latest
+    # Uncomment below to build locally instead of pulling from GHCR:
+    # build: .
+    container_name: antorbit
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      ANTORBIT_ADMIN_PASSWORD: "${ANTORBIT_ADMIN_PASSWORD:-change-me-strong-password}"
+      ANTORBIT_PUBLIC_URL: "${ANTORBIT_PUBLIC_URL:-http://localhost:8000}"
+      # Optional bootstrap API key (you can also create/manage keys in /admin)
+      ANTORBIT_API_KEY: "${ANTORBIT_API_KEY:-}"
+      ANTORBIT_DATA_DIR: "/data"
+    volumes:
+      - ./data:/data
