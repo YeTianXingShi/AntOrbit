@@ -143,6 +143,7 @@ async def publish_site(
         notify_body = req.notify_body
         notify_level = req.notify_level
         notify_group = req.notify_group
+        rewrite_paths = req.rewrite_paths
     else:
         form = await request.form()
         upload = form.get("file")
@@ -171,6 +172,7 @@ async def publish_site(
         notify_body = str(form.get("notify_body") or "").strip() or None
         notify_level = str(form.get("notify_level") or "active").strip()
         notify_group = str(form.get("notify_group") or "").strip() or None
+        rewrite_paths = _parse_bool(form.get("rewrite_paths"), True)
 
     if zip_bytes is None and html_content is None:
         raise HTTPException(
@@ -183,26 +185,41 @@ async def publish_site(
     except StorageError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
+    max_upload_bytes = settings.max_upload_mb * 1024 * 1024
     if zip_bytes is not None:
-        max_upload_bytes = settings.max_upload_mb * 1024 * 1024
         if len(zip_bytes) > max_upload_bytes:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=f"Upload exceeds {settings.max_upload_mb} MB limit.",
             )
         try:
-            size_bytes, file_count = extract_zip_site(
+            size_bytes, file_count, compat_report = extract_zip_site(
                 settings.sites_dir,
                 slug,
                 zip_bytes,
                 max_files=settings.max_site_files,
                 max_uncompressed_bytes=settings.max_uncompressed_mb * 1024 * 1024,
+                rewrite_paths=rewrite_paths,
+                allow_submit=allow_submit,
+                kv_mode=kv_mode,
             )
         except StorageError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     else:
         assert html_content is not None
-        size_bytes, file_count = write_html_site(settings.sites_dir, slug, html_content)
+        if len(html_content.encode("utf-8")) > max_upload_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"HTML exceeds {settings.max_upload_mb} MB limit.",
+            )
+        size_bytes, file_count, compat_report = write_html_site(
+            settings.sites_dir,
+            slug,
+            html_content,
+            rewrite_paths=rewrite_paths,
+            allow_submit=allow_submit,
+            kv_mode=kv_mode,
+        )
 
     # Password handling on create vs overwrite:
     # - password provided -> set new hash
@@ -239,6 +256,8 @@ async def publish_site(
         "site": site_with_url,
         "updated": updated,
         "notification": None,
+        "warnings": compat_report["warnings"],
+        "rewrites": compat_report["rewrites"],
     }
 
     if notify_on_publish:

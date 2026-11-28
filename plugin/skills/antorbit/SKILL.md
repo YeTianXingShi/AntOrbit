@@ -9,18 +9,24 @@ Use the `antorbit` MCP server tools to deploy websites to the user's self-hosted
 
 ## Core Rules for Generated Websites (CRITICAL)
 
+Whenever generating or editing any webpage (single-file HTML, multi-file static site, or Vite/Vue/React/Tailwind app) for AntOrbit, **also read and follow the sibling `antorbit-web-spec` skill** (`../antorbit-web-spec/SKILL.md`) to enforce the unified AntOrbit Slate + Sky Design System, mobile/CJK typography, modern native HTML/CSS, and SDK UX patterns.
+
 Because AntOrbit serves every site under a path prefix (`/s/<slug>/`):
 
 1. **Always use relative paths for site assets and links**:
    - Use `./app.js`, `./styles.css`, `assets/logo.png`, or inline CSS/JS.
    - **Never** use root-absolute paths like `/assets/app.js` or `/style.css` — they will 404 under `/s/<slug>/`.
-   - If building with Vite/React/Vue, set `base: './'` before running `npm run build`.
-2. **The one allowed root-absolute script is the built-in AntOrbit SDK**:
+   - If building with Vite/React/Vue, set `base: './'` and use **hash routing** (`createWebHashHistory` / `HashRouter`) before running `npm run build`.
+2. **The only allowed root-absolute built-in assets are AntOrbit's server-hosted assets**:
    ```html
+   <link rel="stylesheet" href="/_antorbit/ui.css">
    <script src="/_antorbit/sdk.js"></script>
    ```
-   Include this tag whenever the page needs form submission or KV state persistence.
-3. **Mobile-friendly by default**: Users frequently open published pages directly from Bark/ntfy mobile notifications. Always include `<meta name="viewport" content="width=device-width, initial-scale=1.0">` and responsive CSS.
+   - Include `/_antorbit/ui.css` on hosted pages for instant unified Slate + Sky styling (saves tokens; inline the CSS instead only when the user specifically wants a standalone offline-openable HTML file).
+   - Include `/_antorbit/sdk.js` whenever the page needs form submission or KV state persistence.
+3. **Server compatibility & publish `warnings`**:
+   - By default, `publish_site` enables `rewrite_paths=true` (safely rewrites accidental root-absolute HTML/CSS asset paths to `/s/<slug>/...`) and returns a `warnings` list (e.g., unbuilt Vite source dir, JS root-absolute paths, missing SDK). Always inspect `warnings` and fix any real issue before sharing the link.
+4. **Mobile-friendly by default**: Users frequently open published pages directly from Bark/ntfy mobile notifications. Always include `<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">` and responsive CSS.
 
 ## Built-in Interactive SDK (`/_antorbit/sdk.js`)
 
@@ -31,13 +37,13 @@ When a site is published with `allow_submit=true` and/or `kv_mode="read" | "read
 ```html
 <script src="/_antorbit/sdk.js"></script>
 <script>
-  async function handleApprove(decision, note) {
+  async function handleApprove(decision, note, statusEl) {
     const res = await window.AntOrbit.submit({
       decision,
       note,
       submittedAt: new Date().toISOString()
     });
-    alert('已提交，编号 #' + res.id);
+    statusEl.textContent = '已提交，回执编号 #' + res.id;
   }
 </script>
 ```

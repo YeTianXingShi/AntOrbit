@@ -2,7 +2,7 @@
   "name": "antorbit",
   "displayName": "AntOrbit",
   "version": "0.1.0",
-  "description": "Publish static/interactive websites to your self-hosted AntOrbit server and send push notifications via Bark or ntfy.",
+  "description": "Publish standardized static/interactive websites (unified Slate + Sky web spec) to your self-hosted AntOrbit server and send push notifications via Bark or ntfy.",
   "logo": "assets/logo.svg",
   "repository": "https://github.com/YeTianXingShi/AntOrbit",
   "suggestedPrompts": [

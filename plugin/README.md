@@ -2,7 +2,12 @@
 
 本插件为反重力（Antigravity）提供：
 - **`antorbit` 本地 stdio MCP Server**（通过 `uvx` 运行）：支持直接打包上传本地站点目录或内联 HTML、管理站点、查询表单提交与 KV 状态，以及触发 Bark / ntfy 通知推送。
-- **`antorbit` Skill**（`skills/antorbit/SKILL.md`）：指导 Ant 构建适配 `/s/<slug>/` 相对路径的静态与交互网页，并正确调用 `/_antorbit/sdk.js` 与通知推送。
+- **`antorbit` Skill**（`skills/antorbit/SKILL.md`）：指导 Ant 部署站点、适配 `/s/<slug>/` 相对路径、调用 `/_antorbit/sdk.js` 与触发通知推送。
+- **`antorbit-web-spec` Skill**（`skills/antorbit-web-spec/SKILL.md` + `references/`）：强制统一生成网页的 **AntOrbit Slate + Sky 设计规范**、移动端/中文排版、现代 Web 原生特性以及多文件 / Vite / Tailwind 构建规范，避免 AI 每次自由发挥导致风格割裂。
+
+> **推荐搭配外部通用 Web 规范 Skill（可选）**：
+> - `npx skills add GoogleChrome/modern-web-guidance`（Google Chrome 现代 Web 平台原生特性与 Baseline 规范）
+> - `npx skills add vercel-labs/agent-skills --skill web-design-guidelines`（Vercel UI/UX 与无障碍细节审计）
 
 ---
 

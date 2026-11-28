@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>v0.2.0 发布检视与审批 · AntOrbit 示例</title>
+  <script src="/_antorbit/sdk.js"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+
+      /* Fonts (Zero external CDN, CJK-first) */
+      --ao-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+      --ao-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+
+      /* Light Palette — Crisp Slate + Sky */
+      --ao-bg: #f8fafc;
+      --ao-surface: #ffffff;
+      --ao-surface-muted: #f1f5f9;
+      --ao-border: #e2e8f0;
+      --ao-border-strong: #cbd5e1;
+
+      --ao-text: #0f172a;
+      --ao-text-secondary: #475569;
+      --ao-text-muted: #64748b;
+
+      --ao-primary: #0284c7;
+      --ao-primary-hover: #0369a1;
+      --ao-primary-fg: #ffffff;
+      --ao-primary-soft: rgba(2, 132, 199, 0.10);
+      --ao-primary-text: #0369a1;
+
+      --ao-success: #059669;
+      --ao-success-soft: rgba(5, 150, 105, 0.10);
+      --ao-success-text: #047857;
+
+      --ao-warning: #d97706;
+      --ao-warning-soft: rgba(217, 119, 6, 0.12);
+      --ao-warning-text: #b45309;
+
+      --ao-danger: #dc2626;
+      --ao-danger-soft: rgba(220, 38, 38, 0.10);
+      --ao-danger-text: #b91c1c;
+
+      /* Elevation & Geometry */
+      --ao-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+      --ao-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --ao-radius-sm: 8px;
+      --ao-radius-md: 12px;
+      --ao-radius-lg: 16px;
+      --ao-radius-pill: 999px;
+
+      /* Spacing Scale */
+      --ao-space-2: 8px;
+      --ao-space-3: 12px;
+      --ao-space-4: 16px;
+      --ao-space-6: 24px;
+      --ao-space-8: 32px;
+
+      --ao-max-prose: 760px;
+      --ao-max-wide: 1040px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --ao-bg: #0b1120;
+        --ao-surface: #0f172a;
+        --ao-surface-muted: #1e293b;
+        --ao-border: rgba(148, 163, 184, 0.18);
+        --ao-border-strong: rgba(148, 163, 184, 0.32);
+
+        --ao-text: #f8fafc;
+        --ao-text-secondary: #cbd5e1;
+        --ao-text-muted: #94a3b8;
+
+        --ao-primary: #38bdf8;
+        --ao-primary-hover: #7dd3fc;
+        --ao-primary-fg: #082f49;
+        --ao-primary-soft: rgba(56, 189, 248, 0.14);
+        --ao-primary-text: #38bdf8;
+
+        --ao-success: #34d399;
+        --ao-success-soft: rgba(52, 211, 153, 0.14);
+        --ao-success-text: #6ee7b7;
+
+        --ao-warning: #fbbf24;
+        --ao-warning-soft: rgba(251, 191, 36, 0.14);
+        --ao-warning-text: #fde68a;
+
+        --ao-danger: #f87171;
+        --ao-danger-soft: rgba(248, 113, 113, 0.14);
+        --ao-danger-text: #fca5a5;
+
+        --ao-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+        --ao-shadow-md: 0 12px 32px rgba(0, 0, 0, 0.45);
+      }
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --ao-bg: #0b1120;
+      --ao-surface: #0f172a;
+      --ao-surface-muted: #1e293b;
+      --ao-border: rgba(148, 163, 184, 0.18);
+      --ao-border-strong: rgba(148, 163, 184, 0.32);
+
+      --ao-text: #f8fafc;
+      --ao-text-secondary: #cbd5e1;
+      --ao-text-muted: #94a3b8;
+
+      --ao-primary: #38bdf8;
+      --ao-primary-hover: #7dd3fc;
+      --ao-primary-fg: #082f49;
+      --ao-primary-soft: rgba(56, 189, 248, 0.14);
+      --ao-primary-text: #38bdf8;
+
+      --ao-success: #34d399;
+      --ao-success-soft: rgba(52, 211, 153, 0.14);
+      --ao-success-text: #6ee7b7;
+
+      --ao-warning: #fbbf24;
+      --ao-warning-soft: rgba(251, 191, 36, 0.14);
+      --ao-warning-text: #fde68a;
+
+      --ao-danger: #f87171;
+      --ao-danger-soft: rgba(248, 113, 113, 0.14);
+      --ao-danger-text: #fca5a5;
+
+      --ao-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+      --ao-shadow-md: 0 12px 32px rgba(0, 0, 0, 0.45);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      background: var(--ao-bg);
+      color: var(--ao-text);
+      font-family: var(--ao-font-sans);
+      font-size: 15px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.3;
+      letter-spacing: -0.015em;
+      text-wrap: balance;
+    }
+
+    p { margin: 0; }
+    code, .ao-mono { font-family: var(--ao-font-mono); }
+    .ao-num { font-variant-numeric: tabular-nums; }
+
+    :focus-visible {
+      outline: 2px solid var(--ao-primary);
+      outline-offset: 2px;
+    }
+
+    .ao-shell {
+      width: 100%;
+      max-width: var(--ao-max-wide);
+      margin: 0 auto;
+      padding: 20px 16px max(36px, env(safe-area-inset-bottom));
+    }
+
+    /* Header */
+    .ao-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--ao-border);
+    }
+
+    .ao-brand-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .ao-title {
+      font-size: clamp(20px, 3vw, 26px);
+      font-weight: 700;
+    }
+
+    .ao-subtitle {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--ao-text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+    }
+
+    /* Badges */
+    .ao-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: var(--ao-radius-pill);
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--ao-primary-soft);
+      color: var(--ao-primary-text);
+    }
+    .ao-badge--success { background: var(--ao-success-soft); color: var(--ao-success-text); }
+    .ao-badge--warning { background: var(--ao-warning-soft); color: var(--ao-warning-text); }
+    .ao-badge--danger  { background: var(--ao-danger-soft);  color: var(--ao-danger-text); }
+    .ao-badge--neutral { background: var(--ao-surface-muted); color: var(--ao-text-secondary); }
+
+    .ao-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* Buttons */
+    .ao-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 8px 14px;
+      border-radius: var(--ao-radius-sm);
+      border: 1px solid var(--ao-border-strong);
+      background: var(--ao-surface);
+      color: var(--ao-text);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 150ms ease, border-color 150ms ease, opacity 150ms ease;
+    }
+    .ao-btn:hover:not(:disabled) { background: var(--ao-surface-muted); }
+    .ao-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .ao-btn--primary {
+      background: var(--ao-primary);
+      border-color: transparent;
+      color: var(--ao-primary-fg);
+    }
+    .ao-btn--primary:hover:not(:disabled) { background: var(--ao-primary-hover); }
+
+    /* Cards & Sections */
+    .ao-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .ao-card {
+      background: var(--ao-surface);
+      border: 1px solid var(--ao-border);
+      border-radius: var(--ao-radius-md);
+      padding: 20px;
+      box-shadow: var(--ao-shadow-sm);
+    }
+
+    .ao-section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .ao-section-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .ao-section-desc {
+      font-size: 13px;
+      color: var(--ao-text-muted);
+    }
+
+    /* Executive Summary */
+    .ao-summary-list {
+      margin: 12px 0 0;
+      padding-left: 18px;
+      max-width: 70ch;
+      color: var(--ao-text-secondary);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 14px;
+    }
+
+    /* KPI Strip */
+    .ao-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+    }
+
+    .ao-kpi {
+      background: var(--ao-surface);
+      border: 1px solid var(--ao-border);
+      border-radius: var(--ao-radius-md);
+      padding: 16px;
+      box-shadow: var(--ao-shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ao-kpi-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ao-text-muted);
+    }
+
+    .ao-kpi-value {
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+
+    .ao-kpi-foot {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--ao-text-muted);
+    }
+
+    /* Two-column Dashboard Grid */
+    .ao-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    /* Inline SVG Bar Chart */
+    .ao-chart-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .ao-chart-legend {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--ao-text-muted);
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .ao-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ao-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    /* Collapsible Details */
+    details.ao-details {
+      background: var(--ao-surface);
+      border: 1px solid var(--ao-border);
+      border-radius: var(--ao-radius-md);
+      padding: 16px 20px;
+    }
+
+    details.ao-details summary {
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    details.ao-details summary::-webkit-details-marker { display: none; }
+
+    .ao-chevron {
+      transition: transform 150ms ease;
+      color: var(--ao-text-muted);
+      flex-shrink: 0;
+    }
+
+    details.ao-details[open] .ao-chevron {
+      transform: rotate(180deg);
+    }
+
+    .ao-changelog {
+      margin: 14px 0 0;
+      padding: 14px 0 0;
+      border-top: 1px solid var(--ao-border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--ao-text-secondary);
+    }
+
+    .ao-changelog-item {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      overflow-wrap: anywhere;
+    }
+
+    /* Filter Bar & Responsive Table */
+    .ao-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .ao-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .ao-pill {
+      min-height: 36px;
+      padding: 6px 12px;
+      border-radius: var(--ao-radius-pill);
+      border: 1px solid var(--ao-border);
+      background: var(--ao-surface-muted);
+      color: var(--ao-text-secondary);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .ao-pill[aria-pressed="true"] {
+      background: var(--ao-primary);
+      border-color: transparent;
+      color: var(--ao-primary-fg);
+    }
+
+    .ao-search {
+      width: min(260px, 100%);
+      min-height: 40px;
+      padding: 8px 12px;
+      border-radius: var(--ao-radius-sm);
+      border: 1px solid var(--ao-border-strong);
+      background: var(--ao-bg);
+      color: var(--ao-text);
+      font-family: inherit;
+      font-size: 16px;
+    }
+
+    .ao-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid var(--ao-border);
+      border-radius: var(--ao-radius-sm);
+    }
+
+    .ao-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .ao-table th, .ao-table td {
+      padding: 11px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--ao-border);
+      white-space: nowrap;
+    }
+
+    .ao-table th {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ao-text-muted);
+      background: var(--ao-surface-muted);
+    }
+
+    .ao-table tr:last-child td { border-bottom: none; }
+    .ao-table .is-right { text-align: right; }
+
+    .ao-empty {
+      text-align: center;
+      padding: 28px 16px;
+      color: var(--ao-text-muted);
+      font-size: 14px;
+    }
+
+    /* Form Controls */
+    .ao-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: var(--ao-max-prose);
+    }
+
+    .ao-decision-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+    }
+
+    .ao-radio-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 14px;
+      border-radius: var(--ao-radius-sm);
+      border: 1px solid var(--ao-border-strong);
+      background: var(--ao-bg);
+      cursor: pointer;
+      transition: border-color 150ms ease, background-color 150ms ease;
+    }
+
+    .ao-radio-card input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .ao-radio-card:has(input:checked) {
+      border-color: var(--ao-primary);
+      background: var(--ao-primary-soft);
+    }
+
+    .ao-radio-card:has(input:focus-visible) {
+      outline: 2px solid var(--ao-primary);
+      outline-offset: 2px;
+    }
+
+    .ao-radio-title {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .ao-radio-desc {
+      font-size: 12px;
+      color: var(--ao-text-muted);
+    }
+
+    .ao-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ao-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ao-text-secondary);
+    }
+
+    .ao-input, .ao-textarea {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      border-radius: var(--ao-radius-sm);
+      border: 1px solid var(--ao-border-strong);
+      background: var(--ao-bg);
+      color: var(--ao-text);
+      font-family: inherit;
+      font-size: 16px;
+    }
+
+    .ao-textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .ao-input:focus, .ao-textarea:focus, .ao-search:focus {
+      border-color: var(--ao-primary);
+      outline: none;
+      box-shadow: 0 0 0 3px var(--ao-primary-soft);
+    }
+
+    .ao-form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Alerts */
+    .ao-alert {
+      padding: 12px 14px;
+      border-radius: var(--ao-radius-sm);
+      border: 1px solid var(--ao-border);
+      background: var(--ao-surface-muted);
+      font-size: 14px;
+    }
+    .ao-alert--success { background: var(--ao-success-soft); border-color: var(--ao-success); color: var(--ao-success-text); }
+    .ao-alert--warning { background: var(--ao-warning-soft); border-color: var(--ao-warning); color: var(--ao-warning-text); }
+    .ao-alert--danger  { background: var(--ao-danger-soft);  border-color: var(--ao-danger);  color: var(--ao-danger-text); }
+
+    /* Native Dialog */
+    dialog.ao-dialog {
+      width: min(440px, calc(100vw - 32px));
+      padding: 24px;
+      border: 1px solid var(--ao-border-strong);
+      border-radius: var(--ao-radius-lg);
+      background: var(--ao-surface);
+      color: var(--ao-text);
+      box-shadow: var(--ao-shadow-md);
+    }
+    dialog.ao-dialog::backdrop {
+      background: rgba(2, 6, 23, 0.65);
+      backdrop-filter: blur(3px);
+    }
+
+    .ao-dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .ao-footer {
+      margin-top: 28px;
+      padding-top: 16px;
+      border-top: 1px solid var(--ao-border);
+      font-size: 12px;
+      color: var(--ao-text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ao-shell">
+    <!-- Header -->
+    <header class="ao-header">
+      <div>
+        <div class="ao-brand-row">
+          <span class="ao-badge"><span class="ao-dot"></span>AntOrbit · 发布审批</span>
+          <span class="ao-badge ao-badge--success">CI 全部通过</span>
+          <span class="ao-badge ao-badge--neutral ao-mono" id="env-badge">检测环境中...</span>
+        </div>
+        <h1 class="ao-title">AntOrbit v0.2.0 生产发布检视单</h1>
+        <div class="ao-subtitle">
+          <span>分支：<code class="ao-mono">main@8f3c21a</code></span>
+          <span class="ao-num">构建时间：2026-11-28 19:15</span>
+          <span>目标环境：<code class="ao-mono">prod-cn-east</code></span>
+        </div>
+      </div>
+
+      <button type="button" class="ao-btn" id="ao-theme-toggle" aria-label="切换浅色或深色主题">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+        </svg>
+        <span id="theme-label">切换主题</span>
+      </button>
+    </header>
+
+    <main class="ao-stack">
+      <!-- 1. First-viewport Executive Summary -->
+      <section class="ao-card" aria-labelledby="summary-heading">
+        <div class="ao-section-head" style="margin-bottom: 4px;">
+          <h2 class="ao-section-title" id="summary-heading">核心结论（可直接决策）</h2>
+          <span class="ao-badge ao-badge--warning">低风险 · 无库表迁移</span>
+        </div>
+        <ul class="ao-summary-list">
+          <li>本次发布仅包含 <code>antorbit-web-spec</code> 规范 Skill、插件文档更新与静态站点缓存头优化。</li>
+          <li>48 项服务端与 MCP 自动化测试全部通过，P95 接口耗时保持在 <strong class="ao-num">34ms</strong>。</li>
+          <li>回滚方案：保留上一版本容器镜像标签 <code class="ao-mono">v0.1.9</code>，支持 15 秒内一键回切。</li>
+        </ul>
+      </section>
+
+      <!-- 2. KPI Strip -->
+      <section aria-label="关键质量指标">
+        <div class="ao-kpi-grid">
+          <article class="ao-kpi">
+            <span class="ao-kpi-label">自动化测试通过率</span>
+            <span class="ao-kpi-value ao-num">48 / 48</span>
+            <div class="ao-kpi-foot">
+              <span class="ao-badge ao-badge--success">100%</span>
+              <span>耗时 11.4s</span>
+            </div>
+          </article>
+          <article class="ao-kpi">
+            <span class="ao-kpi-label">P95 站点响应延迟</span>
+            <span class="ao-kpi-value ao-num">34 ms</span>
+            <div class="ao-kpi-foot">
+              <span class="ao-badge ao-badge--success">-6 ms</span>
+              <span>较 v0.1.9</span>
+            </div>
+          </article>
+          <article class="ao-kpi">
+            <span class="ao-kpi-label">Docker 镜像体积</span>
+            <span class="ao-kpi-value ao-num">142 MB</span>
+            <div class="ao-kpi-foot">
+              <span class="ao-badge ao-badge--neutral">+1.2 MB</span>
+              <span>linux/amd64</span>
+            </div>
+          </article>
+          <article class="ao-kpi">
+            <span class="ao-kpi-label">安全与规范扫描</span>
+            <span class="ao-kpi-value ao-num">0 高危</span>
+            <div class="ao-kpi-foot">
+              <span class="ao-badge ao-badge--success">通过</span>
+              <span>WCAG AA 合规</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- 3. Inline SVG Trend Chart + Collapsible Changelog -->
+      <section class="ao-grid-2" aria-label="性能趋势与变更明细">
+        <article class="ao-card">
+          <div class="ao-section-head">
+            <div>
+              <h2 class="ao-section-title">压测接口耗时对比（ms）</h2>
+              <p class="ao-section-desc">纯内联 SVG 绘制，零外部图表 CDN 依赖</p>
+            </div>
+          </div>
+          <div class="ao-chart-wrap">
+            <svg viewBox="0 0 420 180" width="100%" height="180" role="img" aria-label="四个核心接口的 P50 与 P95 响应时间柱状图">
+              <!-- Horizontal Grid -->
+              <g stroke="var(--ao-border)" stroke-width="1">
+                <line x1="40" y1="20" x2="405" y2="20" />
+                <line x1="40" y1="60" x2="405" y2="60" />
+                <line x1="40" y1="100" x2="405" y2="100" />
+                <line x1="40" y1="140" x2="405" y2="140" />
+              </g>
+              <!-- Y-axis labels -->
+              <g fill="var(--ao-text-muted)" font-size="11" text-anchor="end" style="font-variant-numeric: tabular-nums;">
+                <text x="32" y="24">60</text>
+                <text x="32" y="64">40</text>
+                <text x="32" y="104">20</text>
+                <text x="32" y="144">0</text>
+              </g>
+              <!-- Bars: 1ms = 2px from y=140 -->
+              <!-- /s/:slug -->
+              <rect x="64" y="116" width="22" height="24" rx="4" fill="var(--ao-primary)" />
+              <rect x="90" y="96" width="22" height="44" rx="4" fill="var(--ao-success)" />
+              <text x="88" y="160" fill="var(--ao-text-secondary)" font-size="11" text-anchor="middle">静态访问</text>
+
+              <!-- /_api/submit -->
+              <rect x="154" y="108" width="22" height="32" rx="4" fill="var(--ao-primary)" />
+              <rect x="180" y="72" width="22" height="68" rx="4" fill="var(--ao-success)" />
+              <text x="178" y="160" fill="var(--ao-text-secondary)" font-size="11" text-anchor="middle">表单提交</text>
+
+              <!-- /_api/kv -->
+              <rect x="244" y="114" width="22" height="26" rx="4" fill="var(--ao-primary)" />
+              <rect x="270" y="88" width="22" height="52" rx="4" fill="var(--ao-success)" />
+              <text x="268" y="160" fill="var(--ao-text-secondary)" font-size="11" text-anchor="middle">KV 读写</text>
+
+              <!-- publish -->
+              <rect x="334" y="90" width="22" height="50" rx="4" fill="var(--ao-primary)" />
+              <rect x="360" y="44" width="22" height="96" rx="4" fill="var(--ao-success)" />
+              <text x="358" y="160" fill="var(--ao-text-secondary)" font-size="11" text-anchor="middle">站点发布</text>
+            </svg>
+          </div>
+          <div class="ao-chart-legend">
+            <span class="ao-legend-item"><span class="ao-swatch" style="background: var(--ao-primary);"></span>P50 延迟</span>
+            <span class="ao-legend-item"><span class="ao-swatch" style="background: var(--ao-success);"></span>P95 延迟</span>
+          </div>
+        </article>
+
+        <div class="ao-stack" style="gap: 14px;">
+          <details class="ao-details" open>
+            <summary>
+              <span>变更摘要（4 项文件更新）</span>
+              <svg class="ao-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"></path>
+              </svg>
+            </summary>
+            <div class="ao-changelog">
+              <div class="ao-changelog-item">
+                <span class="ao-badge">新增</span>
+                <span><code>antorbit-web-spec</code> Skill，统一 Slate + Sky 视觉 Token 与移动端体验。</span>
+              </div>
+              <div class="ao-changelog-item">
+                <span class="ao-badge ao-badge--success">完善</span>
+                <span>补充多文件与 Vite / Vue / React / Tailwind 相对路径及 Hash 路由规范。</span>
+              </div>
+              <div class="ao-changelog-item">
+                <span class="ao-badge ao-badge--neutral">联动</span>
+                <span>更新 <code>antorbit</code> 主 Skill，生成网页时自动遵循统一规范并移除 <code>alert()</code>。</span>
+              </div>
+              <div class="ao-changelog-item">
+                <span class="ao-badge ao-badge--neutral">文档</span>
+                <span>补充 Google <code>modern-web-guidance</code> 与 Vercel <code>web-design-guidelines</code> 搭配建议。</span>
+              </div>
+            </div>
+          </details>
+
+          <details class="ao-details">
+            <summary>
+              <span>回滚与应急预案</span>
+              <svg class="ao-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"></path>
+              </svg>
+            </summary>
+            <div class="ao-changelog">
+              <p>如发布后监控出现异常，执行 <code>docker compose pull &amp;&amp; docker compose up -d</code> 切回 <code>ghcr.io/yetianxingshi/antorbit:v0.1.9</code> 即可，SQLite 数据完全前向兼容。</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- 4. Filterable & Responsive Check Table -->
+      <section class="ao-card" aria-labelledby="checks-heading">
+        <div class="ao-section-head">
+          <div>
+            <h2 class="ao-section-title" id="checks-heading">发布前自动校验明细</h2>
+            <p class="ao-section-desc">支持按状态筛选与关键词过滤；移动端自动横向滚动不撑破布局</p>
+          </div>
+        </div>
+
+        <div class="ao-toolbar">
+          <div class="ao-pills" role="group" aria-label="按检查状态筛选">
+            <button type="button" class="ao-pill" data-filter="all" aria-pressed="true">全部 (6)</button>
+            <button type="button" class="ao-pill" data-filter="pass" aria-pressed="false">通过 (5)</button>
+            <button type="button" class="ao-pill" data-filter="warn" aria-pressed="false">关注 (1)</button>
+          </div>
+          <input
+            type="search"
+            id="check-search"
+            class="ao-search"
+            placeholder="搜索检查项或模块..."
+            aria-label="搜索检查项"
+          />
+        </div>
+
+        <div class="ao-table-wrap">
+          <table class="ao-table">
+            <thead>
+              <tr>
+                <th>检查项</th>
+                <th>模块</th>
+                <th>状态</th>
+                <th class="is-right">耗时</th>
+                <th>说明</th>
+              </tr>
+            </thead>
+            <tbody id="checks-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 5. Approval Form (AntOrbit.submit) -->
+      <section class="ao-card" aria-labelledby="approval-heading">
+        <div class="ao-section-head">
+          <div>
+            <h2 class="ao-section-title" id="approval-heading">审批决策</h2>
+            <p class="ao-section-desc">发布到 AntOrbit（开启 <code>allow_submit=true</code>）后，提交结果将实时写入站点收件箱并触发通知</p>
+          </div>
+        </div>
+
+        <div id="preview-notice" class="ao-alert ao-alert--warning" style="margin-bottom: 16px;" hidden>
+          当前为本地文件预览模式（未运行在 <code>/s/&lt;slug&gt;/</code> 下）。提交时将执行本地模拟回执，发布到 AntOrbit 后自动切换为真实提交。
+        </div>
+
+        <div id="form-feedback" class="ao-alert" style="margin-bottom: 16px;" role="status" aria-live="polite" hidden></div>
+
+        <form class="ao-form" id="approval-form" novalidate>
+          <fieldset style="border: 0; padding: 0; margin: 0;">
+            <legend class="ao-label" style="margin-bottom: 8px;">审批结论 *</legend>
+            <div class="ao-decision-grid">
+              <label class="ao-radio-card">
+                <input type="radio" name="decision" value="approve" />
+                <span class="ao-radio-title" style="color: var(--ao-success-text);">批准发布</span>
+                <span class="ao-radio-desc">立即放行至生产环境</span>
+              </label>
+              <label class="ao-radio-card">
+                <input type="radio" name="decision" value="changes" />
+                <span class="ao-radio-title" style="color: var(--ao-warning-text);">需补充修改</span>
+                <span class="ao-radio-desc">修复备注问题后再发</span>
+              </label>
+              <label class="ao-radio-card">
+                <input type="radio" name="decision" value="hold" />
+                <span class="ao-radio-title" style="color: var(--ao-danger-text);">暂缓发布</span>
+                <span class="ao-radio-desc">暂停本次发布窗口</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="ao-field">
+            <label class="ao-label" for="reviewer">审批人 *</label>
+            <input
+              id="reviewer"
+              name="reviewer"
+              type="text"
+              class="ao-input"
+              placeholder="输入你的名字或代号"
+              autocomplete="name"
+              required
+            />
+          </div>
+
+          <div class="ao-field">
+            <label class="ao-label" for="note">补充意见（选填）</label>
+            <textarea
+              id="note"
+              name="note"
+              class="ao-textarea"
+              placeholder="例如：观察 10 分钟日志无异常后关闭窗口..."
+            ></textarea>
+          </div>
+
+          <div class="ao-form-actions">
+            <button type="submit" class="ao-btn ao-btn--primary" id="submit-btn">提交审批意见</button>
+            <button type="reset" class="ao-btn">重置表单</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <footer class="ao-footer">
+      <span>遵循 <code>antorbit-web-spec</code> · Slate + Sky 统一规范示例</span>
+      <span class="ao-num">零外部 CDN · 原生 HTML/CSS/JS</span>
+    </footer>
+  </div>
+
+  <!-- Native Confirm Dialog -->
+  <dialog class="ao-dialog" id="confirm-dialog" aria-labelledby="dialog-title">
+    <h3 id="dialog-title" style="font-size: 18px; margin-bottom: 8px;">确认提交审批意见？</h3>
+    <p id="dialog-summary" style="font-size: 14px; color: var(--ao-text-secondary);"></p>
+    <div class="ao-dialog-actions">
+      <button type="button" class="ao-btn" id="dialog-cancel">取消</button>
+      <button type="button" class="ao-btn ao-btn--primary" id="dialog-confirm">确认提交</button>
+    </div>
+  </dialog>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* 1. Theme Toggle (follows prefers-color-scheme by default) */
+      const themeKey = 'ao-theme';
+      const root = document.documentElement;
+      const savedTheme = localStorage.getItem(themeKey);
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        root.dataset.theme = savedTheme;
+      }
+
+      const themeBtn = document.getElementById('ao-theme-toggle');
+      const themeLabel = document.getElementById('theme-label');
+
+      function isDarkNow() {
+        return root.dataset.theme
+          ? root.dataset.theme === 'dark'
+          : matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+
+      function syncThemeLabel() {
+        themeLabel.textContent = isDarkNow() ? '切至浅色' : '切至深色';
+      }
+      syncThemeLabel();
+
+      themeBtn.addEventListener('click', () => {
+        const next = isDarkNow() ? 'light' : 'dark';
+        root.dataset.theme = next;
+        localStorage.setItem(themeKey, next);
+        syncThemeLabel();
+      });
+
+      /* 2. Detect AntOrbit Hosted Environment */
+      const hosted = Boolean(window.AntOrbit && window.AntOrbit.baseUrl);
+      const envBadge = document.getElementById('env-badge');
+      const previewNotice = document.getElementById('preview-notice');
+      if (hosted) {
+        envBadge.textContent = '/s/' + window.AntOrbit.slug;
+      } else {
+        envBadge.textContent = '本地预览模式';
+        previewNotice.hidden = false;
+      }
+
+      /* 3. Interactive Filterable Table */
+      const checks = [
+        { name: 'FastAPI 单元测试套件', module: 'server', status: 'pass', duration: '6.2s', note: '32/32 通过，覆盖解锁页与 KV 权限' },
+        { name: 'MCP stdio 工具集成测试', module: 'mcp', status: 'pass', duration: '5.2s', note: '16/16 通过，ZIP 打包过滤规则正常' },
+        { name: 'Vite 相对路径产物检查', module: 'web', status: 'pass', duration: '1.8s', note: '所有静态资源均为 ./assets/ 相对路径' },
+        { name: '375px 移动端溢出审计', module: 'ui', status: 'pass', duration: '0.9s', note: '无水平滚动条，表单字号 >= 16px' },
+        { name: 'WCAG AA 明暗对比度检查', module: 'a11y', status: 'pass', duration: '0.6s', note: '双主题正文与按钮对比度均 >= 4.6:1' },
+        { name: '单文件体积极值预警', module: 'bundle', status: 'warn', duration: '0.3s', note: '演示页面含完整注释，生产可按需裁剪' }
+      ];
+
+      let activeFilter = 'all';
+      let searchQuery = '';
+      const tbody = document.getElementById('checks-tbody');
+      const pills = Array.from(document.querySelectorAll('.ao-pill'));
+      const searchInput = document.getElementById('check-search');
+
+      function renderTable() {
+        const q = searchQuery.trim().toLowerCase();
+        const rows = checks.filter((item) => {
+          const matchStatus = activeFilter === 'all' || item.status === activeFilter;
+          const matchQuery = !q ||
+            item.name.toLowerCase().includes(q) ||
+            item.module.toLowerCase().includes(q) ||
+            item.note.toLowerCase().includes(q);
+          return matchStatus && matchQuery;
+        });
+
+        if (rows.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="ao-empty">没有匹配当前筛选条件的检查项</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = rows.map((r) => {
+          const badge = r.status === 'pass'
+            ? '<span class="ao-badge ao-badge--success">通过</span>'
+            : '<span class="ao-badge ao-badge--warning">关注</span>';
+          return `
+            <tr>
+              <td><strong>${r.name}</strong></td>
+              <td><code class="ao-mono">${r.module}</code></td>
+              <td>${badge}</td>
+              <td class="is-right ao-num">${r.duration}</td>
+              <td style="color: var(--ao-text-secondary);">${r.note}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      pills.forEach((pill) => {
+        pill.addEventListener('click', () => {
+          activeFilter = pill.dataset.filter;
+          pills.forEach((p) => p.setAttribute('aria-pressed', String(p === pill)));
+          renderTable();
+        });
+      });
+
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        renderTable();
+      });
+
+      renderTable();
+
+      /* 4. Approval Form + Native <dialog> + AntOrbit.submit State Machine */
+      const form = document.getElementById('approval-form');
+      const submitBtn = document.getElementById('submit-btn');
+      const feedback = document.getElementById('form-feedback');
+      const dialog = document.getElementById('confirm-dialog');
+      const dialogSummary = document.getElementById('dialog-summary');
+      const dialogCancel = document.getElementById('dialog-cancel');
+      const dialogConfirm = document.getElementById('dialog-confirm');
+
+      const decisionLabels = {
+        approve: '批准发布',
+        changes: '需补充修改',
+        hold: '暂缓发布'
+      };
+
+      let pendingPayload = null;
+
+      function showBanner(kind, text) {
+        feedback.className = 'ao-alert ao-alert--' + kind;
+        feedback.textContent = text;
+        feedback.hidden = false;
+      }
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        feedback.hidden = true;
+
+        const data = Object.fromEntries(new FormData(form).entries());
+        const reviewer = (data.reviewer || '').trim();
+        if (!data.decision) {
+          showBanner('danger', '请先选择一项审批结论。');
+          return;
+        }
+        if (!reviewer) {
+          showBanner('danger', '请填写审批人姓名或代号。');
+          document.getElementById('reviewer').focus();
+          return;
+        }
+
+        pendingPayload = {
+          release: 'v0.2.0',
+          decision: data.decision,
+          decisionLabel: decisionLabels[data.decision],
+          reviewer,
+          note: (data.note || '').trim(),
+          submittedAt: new Date().toISOString()
+        };
+
+        dialogSummary.textContent =
+          `审批人「${reviewer}」将以「${pendingPayload.decisionLabel}」提交本次发布审批。` +
+          (hosted ? '' : '（当前为本地预览，将返回模拟回执）');
+        dialog.showModal();
+      });
+
+      dialogCancel.addEventListener('click', () => {
+        dialog.close();
+        pendingPayload = null;
+      });
+
+      dialogConfirm.addEventListener('click', async () => {
+        if (!pendingPayload) return;
+        const payload = pendingPayload;
+        dialog.close();
+
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = '提交中...';
+
+        try {
+          if (hosted) {
+            const res = await window.AntOrbit.submit(payload);
+            showBanner('success', `审批意见已提交成功，回执编号 #${res.id}（${payload.decisionLabel}）。`);
+          } else {
+            await new Promise((r) => setTimeout(r, 450));
+            const mockId = Math.floor(1000 + Math.random() * 9000);
+            showBanner('success', `[本地模拟] 审批已记录，模拟回执 #${mockId}（${payload.decisionLabel}）。发布到 AntOrbit 后将真实入库。`);
+          }
+          form.reset();
+        } catch (err) {
+          showBanner('danger', `提交失败：${err && err.message ? err.message : '请稍后重试'}`);
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+          pendingPayload = null;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -35,7 +35,7 @@ async def test_mcp_server_registers_all_tools() -> None:
     assert expected.issubset(names)
 
 
-def test_pack_directory_skips_ignored_dirs(tmp_path: Path) -> None:
+def test_pack_directory_skips_ignored_dirs_and_sensitive_files(tmp_path: Path) -> None:
     (tmp_path / "index.html").write_text("<h1>Hello</h1>", encoding="utf-8")
     (tmp_path / "assets").mkdir()
     (tmp_path / "assets" / "app.js").write_text("console.log(1)", encoding="utf-8")
@@ -43,6 +43,12 @@ def test_pack_directory_skips_ignored_dirs(tmp_path: Path) -> None:
     (tmp_path / ".git" / "config").write_text("secret", encoding="utf-8")
     (tmp_path / "node_modules").mkdir()
     (tmp_path / "node_modules" / "pkg.js").write_text("big", encoding="utf-8")
+    (tmp_path / ".vscode").mkdir()
+    (tmp_path / ".vscode" / "settings.json").write_text("{}", encoding="utf-8")
+    (tmp_path / ".env").write_text("SECRET=1", encoding="utf-8")
+    (tmp_path / ".env.production").write_text("SECRET=2", encoding="utf-8")
+    (tmp_path / "server.key").write_text("PRIVATE KEY", encoding="utf-8")
+    (tmp_path / "cert.pem").write_text("CERT", encoding="utf-8")
 
     raw, count = pack_directory_to_zip(tmp_path)
     assert count == 2
@@ -78,8 +84,14 @@ async def test_client_publish_directory_and_notify(tmp_path: Path) -> None:
     )
 
     client = AntOrbitClient(base_url="https://orbit.example.com", api_key="ao_test")
-    res = await client.publish_site(directory=str(tmp_path), slug="demo", allow_submit=True)
+    res = await client.publish_site(
+        directory=str(tmp_path),
+        slug="demo",
+        allow_submit=True,
+        rewrite_paths=False,
+    )
     assert pub_route.called
+    assert b"false" in pub_route.calls.last.request.content
     assert res["site"]["url"] == "https://orbit.example.com/s/demo/"
 
     nres = await client.send_notification(title="Done", body="Ready", url=res["site"]["url"])

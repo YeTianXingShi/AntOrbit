@@ -293,3 +293,229 @@ def test_bark_and_ntfy_notifications(client: TestClient) -> None:
     logs = client.get("/api/v1/notifications/logs", headers=_auth_headers()).json()["logs"]
     assert len(logs) == 3
     assert all(item["status"] == "success" for item in logs)
+
+
+def test_builtin_ui_css_and_head_requests(client: TestClient) -> None:
+    css = client.get("/_antorbit/ui.css")
+    assert css.status_code == 200
+    assert "text/css" in css.headers["content-type"]
+    assert "--ao-primary:" in css.text
+    assert ".ao-card" in css.text
+
+    css_head = client.head("/_antorbit/ui.css")
+    assert css_head.status_code == 200
+    assert css_head.text == ""
+
+    sdk_head = client.head("/_antorbit/sdk.js")
+    assert sdk_head.status_code == 200
+    assert sdk_head.text == ""
+
+
+def test_path_rewriting_and_js_warning(client: TestClient) -> None:
+    bundle = _make_zip(
+        {
+            "index.html": (
+                "<!doctype html><html><head>"
+                '<link rel="stylesheet" href="/_antorbit/ui.css">'
+                '<link rel="stylesheet" href="/styles/app.css">'
+                '<script src="/_antorbit/sdk.js"></script>'
+                '<script type="module" src="/assets/index-D9xK2a1b.js"></script>'
+                '<script src="//cdn.example.com/lib.js"></script>'
+                "<style>body{background:url(/images/bg.png);}</style>"
+                "</head><body>"
+                '<img srcset="/images/a.png 1x, /images/b.png 2x">'
+                "</body></html>"
+            ),
+            "styles/app.css": '@import "/styles/reset.css"; .hero { background: url("/images/hero.webp"); }',
+            "assets/index-D9xK2a1b.js": 'console.log("loaded"); fetch("/data/info.json");',
+        }
+    )
+    r = client.post(
+        "/api/v1/sites",
+        headers=_auth_headers(),
+        data={"slug": "rewrite-demo", "allow_submit": "true"},
+        files={"file": ("site.zip", bundle, "application/zip")},
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert body["rewrites"]["enabled"] is True
+    assert body["rewrites"]["html_files"] == 1
+    assert body["rewrites"]["css_files"] == 1
+    assert body["rewrites"]["urls_rewritten"] >= 6
+    # JS root path should produce a warning, not modify JS
+    assert any("JS files" in w for w in body["warnings"])
+
+    html = client.get("/s/rewrite-demo/").text
+    assert 'href="/_antorbit/ui.css"' in html
+    assert 'src="/_antorbit/sdk.js"' in html
+    assert 'src="//cdn.example.com/lib.js"' in html
+    assert 'href="/s/rewrite-demo/styles/app.css"' in html
+    assert 'src="/s/rewrite-demo/assets/index-D9xK2a1b.js"' in html
+    assert "url(/s/rewrite-demo/images/bg.png)" in html
+    assert 'srcset="/s/rewrite-demo/images/a.png 1x, /s/rewrite-demo/images/b.png 2x"' in html
+
+    css = client.get("/s/rewrite-demo/styles/app.css").text
+    assert '@import "/s/rewrite-demo/styles/reset.css"' in css
+    assert 'url("/s/rewrite-demo/images/hero.webp")' in css
+
+    js = client.get("/s/rewrite-demo/assets/index-D9xK2a1b.js").text
+    assert 'fetch("/data/info.json")' in js
+
+    # Disabling rewrite_paths preserves raw root paths and emits a warning
+    r_raw = client.post(
+        "/api/v1/sites",
+        headers=_auth_headers(),
+        json={
+            "slug": "no-rewrite",
+            "html": '<html><head><link rel="stylesheet" href="/style.css"></head></html>',
+            "rewrite_paths": False,
+        },
+    )
+    assert r_raw.status_code == 201
+    assert r_raw.json()["rewrites"]["urls_rewritten"] == 0
+    assert any("rewrite_paths=false" in w for w in r_raw.json()["warnings"])
+    assert 'href="/style.css"' in client.get("/s/no-rewrite/").text
+
+
+def test_spa_deep_route_injects_base_and_preserves_existing_base(client: TestClient) -> None:
+    r = client.post(
+        "/api/v1/sites",
+        headers=_auth_headers(),
+        json={
+            "slug": "spa-app",
+            "html": '<!doctype html><html><head><title>SPA</title><script type="module" src="./assets/app.js"></script></head><body>OK</body></html>',
+        },
+    )
+    assert r.status_code == 201
+
+    # Root page does not need injected <base>
+    root_resp = client.get("/s/spa-app/")
+    assert root_resp.status_code == 200
+    assert "<base " not in root_resp.text
+
+    # Deep extensionless route falls back to index.html and injects <base href="/s/spa-app/">
+    deep = client.get("/s/spa-app/users/42")
+    assert deep.status_code == 200
+    assert '<base href="/s/spa-app/">' in deep.text
+    assert deep.headers["cache-control"] == "no-cache"
+
+    # Missing asset with extension returns 404 (not SPA index.html)
+    assert client.get("/s/spa-app/missing.js").status_code == 404
+
+
+def test_multifile_trailing_slash_clean_url_custom_404_and_single_html(client: TestClient) -> None:
+    mpa_zip = _make_zip(
+        {
+            "index.html": "<h1>Home</h1>",
+            "about.html": "<h1>About Us</h1>",
+            "docs/index.html": "<h1>Docs</h1>",
+            "404.html": "<h1>Custom Missing Page</h1>",
+        }
+    )
+    r = client.post(
+        "/api/v1/sites",
+        headers=_auth_headers(),
+        data={"slug": "mpa-site"},
+        files={"file": ("site.zip", mpa_zip, "application/zip")},
+    )
+    assert r.status_code == 201
+
+    # Subdirectory without trailing slash redirects 307 with query string preserved
+    redir = client.get("/s/mpa-site/docs?tab=api", follow_redirects=False)
+    assert redir.status_code == 307
+    assert redir.headers["location"] == "/s/mpa-site/docs/?tab=api"
+
+    # Subdirectory with trailing slash serves docs/index.html
+    assert "<h1>Docs</h1>" in client.get("/s/mpa-site/docs/").text
+
+    # Clean URL resolves about -> about.html
+    about = client.get("/s/mpa-site/about")
+    assert about.status_code == 200
+    assert "<h1>About Us</h1>" in about.text
+
+    # Custom 404.html returned with status 404 for unknown page route
+    missing = client.get("/s/mpa-site/nonexistent")
+    assert missing.status_code == 404
+    assert "<h1>Custom Missing Page</h1>" in missing.text
+
+    # Single-HTML directory without index.html auto-serves the sole HTML file
+    sole_zip = _make_zip({"report.html": "<h1>Quarterly Report</h1>", "data.json": '{"ok":true}'})
+    r_sole = client.post(
+        "/api/v1/sites",
+        headers=_auth_headers(),
+        data={"slug": "sole-html"},
+        files={"file": ("site.zip", sole_zip, "application/zip")},
+    )
+    assert r_sole.status_code == 201
+    assert any("report.html" in w for w in r_sole.json()["warnings"])
+    assert "<h1>Quarterly Report</h1>" in client.get("/s/sole-html/").text
+
+
+def test_modern_mime_cache_control_head_and_diagnostics(client: TestClient) -> None:
+    assets_zip = _make_zip(
+        {
+            "index.html": "<!doctype html><html><body>" + ("hello " * 200) + "</body></html>",
+            "assets/index-D9xK2a1b.js": "export const x = 1;",
+            "assets/my-module-file.mjs": "export const y = 2;",
+            "assets/core.wasm": b"\x00asm\x01\x00\x00\x00",
+            "site.webmanifest": '{"name":"Test"}',
+        }
+    )
+    r = client.post(
+        "/api/v1/sites",
+        headers=_auth_headers(),
+        data={"slug": "modern-web", "allow_submit": "true"},
+        files={"file": ("site.zip", assets_zip, "application/zip")},
+    )
+    assert r.status_code == 201
+    # Missing SDK warning when allow_submit=True
+    assert any("sdk.js" in w for w in r.json()["warnings"])
+
+    # HEAD does not increment view_count
+    head_resp = client.head("/s/modern-web/")
+    assert head_resp.status_code == 200
+    assert head_resp.text == ""
+    assert head_resp.headers["cache-control"] == "no-cache"
+    assert head_resp.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    site_meta = client.get("/api/v1/sites/modern-web", headers=_auth_headers()).json()["site"]
+    assert site_meta["view_count"] == 0
+
+    # GET increments view_count
+    get_resp = client.get("/s/modern-web/")
+    assert get_resp.status_code == 200
+    assert "text/html" in get_resp.headers["content-type"]
+    site_meta2 = client.get("/api/v1/sites/modern-web", headers=_auth_headers()).json()["site"]
+    assert site_meta2["view_count"] == 1
+
+    # Modern MIME & layered Cache-Control
+    hashed_js = client.get("/s/modern-web/assets/index-D9xK2a1b.js")
+    assert "text/javascript" in hashed_js.headers["content-type"]
+    assert hashed_js.headers["cache-control"] == "public, max-age=31536000, immutable"
+
+    plain_mjs = client.get("/s/modern-web/assets/my-module-file.mjs")
+    assert "text/javascript" in plain_mjs.headers["content-type"]
+    assert plain_mjs.headers["cache-control"] == "public, max-age=300"
+
+    wasm = client.get("/s/modern-web/assets/core.wasm")
+    assert wasm.headers["content-type"] == "application/wasm"
+
+    manifest = client.get("/s/modern-web/site.webmanifest")
+    assert "application/manifest+json" in manifest.headers["content-type"]
+    assert manifest.headers["cache-control"] == "no-cache"
+
+    # Unbuilt source directory diagnostic (with dist/ present)
+    src_zip = _make_zip(
+        {
+            "package.json": '{"name":"my-app"}',
+            "index.html": '<html><body><script type="module" src="/src/main.ts"></script></body></html>',
+            "dist/index.html": "<html><body>Built</body></html>",
+        }
+    )
+    r_src = client.post(
+        "/api/v1/sites",
+        headers=_auth_headers(),
+        data={"slug": "unbuilt-proj"},
+        files={"file": ("site.zip", src_zip, "application/zip")},
+    )
+    assert r_src.status_code == 201
+    assert any("dist/" in w for w in r_src.json()["warnings"])

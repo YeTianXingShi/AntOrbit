@@ -8,7 +8,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 
 from . import __version__
@@ -17,7 +18,7 @@ from .db import Database
 from .notifications import NotificationService
 from .routes_api import router as api_router
 from .routes_sites import router as sites_router
-from .sdk import SDK_JS
+from .sdk import SDK_JS, UI_CSS
 from .security import SlidingWindowRateLimiter
 from .storage import delete_site_files
 
@@ -77,6 +78,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         version=__version__,
         lifespan=lifespan,
     )
+    app.add_middleware(GZipMiddleware, minimum_size=500)
 
     app.include_router(api_router)
     app.include_router(sites_router)
@@ -85,11 +87,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok", "version": __version__}
 
-    @app.get("/_antorbit/sdk.js")
-    async def serve_sdk() -> Response:
+    @app.api_route("/_antorbit/sdk.js", methods=["GET", "HEAD"])
+    async def serve_sdk(request: Request) -> Response:
         return Response(
-            content=SDK_JS,
-            media_type="application/javascript; charset=utf-8",
+            content="" if request.method == "HEAD" else SDK_JS,
+            media_type="text/javascript; charset=utf-8",
+            headers={"Cache-Control": "public, max-age=300"},
+        )
+
+    @app.api_route("/_antorbit/ui.css", methods=["GET", "HEAD"])
+    async def serve_ui_css(request: Request) -> Response:
+        return Response(
+            content="" if request.method == "HEAD" else UI_CSS,
+            media_type="text/css; charset=utf-8",
             headers={"Cache-Control": "public, max-age=300"},
         )
 

@@ -44,6 +44,7 @@ class SitePublishJsonRequest(BaseModel):
     notify_body: str | None = None
     notify_level: Literal["passive", "active", "timeSensitive", "critical"] = "active"
     notify_group: str | None = None
+    rewrite_paths: bool = True
 
 
 class SubmissionCreateRequest(BaseModel):

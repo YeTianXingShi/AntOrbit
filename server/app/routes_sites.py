@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 
+from .compat import compute_cache_control, guess_media_type, inject_base_href
 from .config import Settings
 from .db import Database, parse_iso
 from .deps import (
@@ -26,7 +27,7 @@ from .notifications import NotificationPayload, NotificationService
 from .schemas import KvSetRequest, SubmissionCreateRequest
 from .sdk import render_status_page, render_unlock_page
 from .security import SlidingWindowRateLimiter, sign_token, verify_password, verify_token
-from .storage import StorageError, resolve_site_file, validate_kv_key
+from .storage import StorageError, resolve_site_target, validate_kv_key
 
 logger = logging.getLogger("antorbit.sites")
 
@@ -93,9 +94,12 @@ async def _dispatch_submission_notification(
         logger.warning("Failed to dispatch submission notification for %s: %s", site["slug"], exc)
 
 
-@router.get("/s/{slug}")
-async def redirect_site_root(slug: str) -> RedirectResponse:
-    return RedirectResponse(url=f"/s/{slug}/", status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+@router.api_route("/s/{slug}", methods=["GET", "HEAD"])
+async def redirect_site_root(slug: str, request: Request) -> RedirectResponse:
+    target = f"/s/{slug}/"
+    if request.url.query:
+        target = f"{target}?{request.url.query}"
+    return RedirectResponse(url=target, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
 
 @router.post("/s/{slug}/_unlock")
@@ -314,7 +318,14 @@ async def site_kv_delete(
 # ---- Static File Serving (/s/{slug}/...) ----
 
 
-@router.get("/s/{slug}/{path:path}")
+def _apply_site_security_headers(resp: Response, cache_control: str) -> Response:
+    resp.headers["Cache-Control"] = cache_control
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return resp
+
+
+@router.api_route("/s/{slug}/{path:path}", methods=["GET", "HEAD"])
 async def serve_site_file(
     slug: str,
     path: str,
@@ -322,35 +333,81 @@ async def serve_site_file(
     db: Database = Depends(get_db),
     settings: Settings = Depends(get_app_settings),
 ) -> Response:
+    is_head = request.method == "HEAD"
+
     site = _load_active_site(db, slug, as_json=False)
     if not site:
         return HTMLResponse(
-            render_status_page(404, "站点不存在", f"未找到站点 {slug}，可能已被删除。"),
+            "" if is_head else render_status_page(404, "站点不存在", f"未找到站点 {slug}，可能已被删除。"),
             status_code=status.HTTP_404_NOT_FOUND,
         )
     if site.get("_expired"):
         return HTMLResponse(
-            render_status_page(410, "站点已过期", f"站点 {slug} 已超过有效期并停止访问。"),
+            "" if is_head else render_status_page(410, "站点已过期", f"站点 {slug} 已超过有效期并停止访问。"),
             status_code=status.HTTP_410_GONE,
         )
 
     if not _has_site_access(request, site):
         return HTMLResponse(
-            render_unlock_page(slug, site["title"]),
+            "" if is_head else render_unlock_page(slug, site["title"]),
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
-    target = resolve_site_file(settings.sites_dir, slug, path)
-    if not target:
+    resolved = resolve_site_target(settings.sites_dir, slug, path)
+
+    if resolved.kind == "redirect" and resolved.redirect_to:
+        location = resolved.redirect_to
+        if request.url.query:
+            location = f"{location}?{request.url.query}"
+        return RedirectResponse(url=location, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+
+    if resolved.kind == "custom_404" and resolved.path is not None:
+        if is_head:
+            return _apply_site_security_headers(
+                Response(status_code=status.HTTP_404_NOT_FOUND, media_type="text/html; charset=utf-8"),
+                "no-cache",
+            )
+        content = resolved.path.read_bytes()
+        return _apply_site_security_headers(
+            Response(content=content, status_code=status.HTTP_404_NOT_FOUND, media_type="text/html; charset=utf-8"),
+            "no-cache",
+        )
+
+    if resolved.kind == "not_found" or resolved.path is None or resolved.rel_path is None:
         return HTMLResponse(
-            render_status_page(404, "文件未找到", f"站点 {slug} 中不存在路径 /{path}。"),
+            "" if is_head else render_status_page(404, "文件未找到", f"站点 {slug} 中不存在路径 /{path}。"),
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
-    if not path or path.endswith("/") or target.name == "index.html":
+    if not is_head and (not path or path.endswith("/") or resolved.path.name == "index.html" or resolved.kind == "spa_fallback"):
         db.increment_view_count(slug)
 
-    resp = FileResponse(target)
-    resp.headers["X-Content-Type-Options"] = "nosniff"
-    resp.headers["Referrer-Policy"] = "no-referrer"
-    return resp
+    # For deep SPA fallback routes, ensure <base href="/s/<slug>/"> is present so relative ./ assets resolve.
+    if resolved.kind == "spa_fallback":
+        try:
+            html_text = resolved.path.read_text(encoding="utf-8")
+            patched = inject_base_href(html_text, slug)
+            return _apply_site_security_headers(
+                Response(
+                    content="" if is_head else patched.encode("utf-8"),
+                    media_type="text/html; charset=utf-8",
+                ),
+                "no-cache",
+            )
+        except UnicodeDecodeError:
+            pass
+
+    media_type = guess_media_type(resolved.path)
+    cache_control = compute_cache_control(resolved.rel_path)
+
+    if is_head:
+        stat_res = resolved.path.stat()
+        resp: Response = Response(
+            status_code=status.HTTP_200_OK,
+            media_type=media_type,
+            headers={"Content-Length": str(stat_res.st_size)},
+        )
+        return _apply_site_security_headers(resp, cache_control)
+
+    resp = FileResponse(resolved.path, media_type=media_type)
+    return _apply_site_security_headers(resp, cache_control)

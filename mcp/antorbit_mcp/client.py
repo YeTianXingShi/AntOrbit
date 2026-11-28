@@ -10,8 +10,26 @@ from typing import Any
 
 import httpx
 
-SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".pytest_cache", ".mypy_cache"}
-SKIP_FILES = {".DS_Store", "Thumbs.db"}
+SKIP_DIRS = {
+    ".git",
+    "node_modules",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".idea",
+    ".vscode",
+}
+SKIP_FILES = {".DS_Store", "Thumbs.db", ".npmrc", ".pypirc", "id_rsa", "id_ed25519"}
+SKIP_EXTENSIONS = {".pem", ".key", ".p12", ".pfx"}
+
+
+def _should_skip_file(filename: str) -> bool:
+    lower = filename.lower()
+    if filename in SKIP_FILES or lower == ".env" or lower.startswith(".env."):
+        return True
+    return Path(lower).suffix in SKIP_EXTENSIONS
 
 
 class AntOrbitError(RuntimeError):
@@ -32,7 +50,7 @@ def pack_directory_to_zip(directory: str | Path) -> tuple[bytes, int]:
         for dirpath, dirnames, filenames in os.walk(root):
             dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
             for filename in filenames:
-                if filename in SKIP_FILES:
+                if _should_skip_file(filename):
                     continue
                 full_path = Path(dirpath) / filename
                 if full_path.is_symlink():
@@ -112,6 +130,7 @@ class AntOrbitClient:
         notify_body: str | None = None,
         notify_level: str = "active",
         notify_group: str | None = None,
+        rewrite_paths: bool = True,
     ) -> dict[str, Any]:
         if bool(directory) == bool(html):
             raise AntOrbitError("Provide exactly one of 'directory' or 'html'.")
@@ -134,6 +153,7 @@ class AntOrbitClient:
                 "notify_body": notify_body,
                 "notify_level": notify_level,
                 "notify_group": notify_group,
+                "rewrite_paths": rewrite_paths,
             }
             return await self._request("POST", "/sites", json=payload)
 
@@ -148,6 +168,7 @@ class AntOrbitClient:
             "notify_channel": notify_channel,
             "notify_on_publish": str(notify_on_publish).lower(),
             "notify_level": notify_level,
+            "rewrite_paths": str(rewrite_paths).lower(),
         }
         if slug:
             form_data["slug"] = slug

@@ -16,8 +16,8 @@ mcp = _MCPServer(
     "antorbit",
     instructions=(
         "AntOrbit publishes static/SPA websites to a self-hosted server under /s/<slug>/, "
-        "supports built-in form submissions and KV state via /_antorbit/sdk.js, and pushes "
-        "notifications via configured Bark/ntfy channels."
+        "provides built-in /_antorbit/ui.css (Slate + Sky design system) and /_antorbit/sdk.js "
+        "(form submissions and KV state), and pushes notifications via configured Bark/ntfy channels."
     ),
 )
 
@@ -49,12 +49,15 @@ async def publish_site(
     notify_body: str | None = None,
     notify_level: Literal["passive", "active", "timeSensitive", "critical"] = "active",
     notify_group: str | None = None,
+    rewrite_paths: bool = True,
 ) -> str:
     """Publish or update a website on AntOrbit from either a local directory or inline HTML.
 
     Pass either `directory` (local folder containing index.html and relative assets) OR
     `html` (single-file HTML string). Reusing an existing `slug` updates static files in
-    place while preserving existing form submissions and KV entries.
+    place while preserving existing form submissions and KV entries. By default,
+    `rewrite_paths=True` safely rewrites root-absolute HTML/CSS asset paths to `/s/<slug>/...`
+    and returns compatibility `warnings` in the response.
     """
     res = await _client().publish_site(
         directory=directory,
@@ -74,6 +77,7 @@ async def publish_site(
         notify_body=notify_body,
         notify_level=notify_level,
         notify_group=notify_group,
+        rewrite_paths=rewrite_paths,
     )
     return _fmt(res)
 

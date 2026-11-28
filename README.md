@@ -15,7 +15,8 @@
   - 按站点可选访问密码（内置解锁页 + `Path=/s/<slug>/` 作用域 `HttpOnly` Cookie 隔离）
   - 可选 TTL 自动过期与后台定时清理
   - 复用 `slug` 原地覆盖更新静态资源时，自动保留该站点已有的表单提交与 KV 数据
-- **轻量交互能力 + 内置 SDK**：页面引入 `<script src="/_antorbit/sdk.js"></script>` 即可调用 `AntOrbit.submit()` 收集表单/审批，以及 `AntOrbit.kv.get/set/list/delete` 读写 JSON 状态。
+- **轻量交互能力 + 内置资产（SDK & 统一 UI 样式）**：页面引入 `<script src="/_antorbit/sdk.js"></script>` 即可调用 `AntOrbit.submit()` 和 `AntOrbit.kv.*`；引入 `<link rel="stylesheet" href="/_antorbit/ui.css">` 即可直接复用 AntOrbit Slate + Sky 设计系统。
+- **开箱即用的现代静态站点兼容**：自动改写 HTML/CSS 根路径至 `/s/<slug>/...`、SPA 深层路由自动注入 `<base>`、子目录 307 补尾斜杠、Clean URL（`about` → `about.html`）、单 HTML 目录自动入口、自定义 `404.html`、完整现代 MIME（`.mjs`/`.wasm`/`.woff2`/`.avif`/`.webmanifest`）、`GET`/`HEAD`、Gzip 压缩与分层 `Cache-Control` 缓存策略，发布时自动返回兼容性诊断 `warnings`。
 - **全场景通知推送（Bark / ntfy）**：支持 Ant 独立推送消息、发布站点时一键推送链接、站点收到表单提交时自动推送提醒，支持点击通知直达网页与紧急级别设置。
 - **标准 Antigravity 插件**：打包本地 stdio Python MCP Server（支持直接打包上传本地文件夹或内联 HTML）+ `SKILL.md`。
 
@@ -123,9 +124,10 @@ docker compose up -d
 
 ## 三、安装与配置 Antigravity 客户端插件
 
-AntOrbit 插件包含两部分：
+AntOrbit 插件包含三部分：
 - **本地 stdio MCP Server**（`antorbit`）：由 `uvx` 自动拉取运行，支持直接打包本地目录上传或发送内联 HTML。
-- **AntOrbit Skill**（`skills/antorbit/SKILL.md`）：教导 Ant 生成适配 `/s/<slug>/` 相对路径的网页、接入 `/_antorbit/sdk.js` 并触发推送。
+- **AntOrbit 发布 Skill**（`skills/antorbit/SKILL.md`）：教导 Ant 适配 `/s/<slug>/` 相对路径、接入 `/_antorbit/sdk.js` 并触发推送。
+- **AntOrbit 网页生成规范 Skill**（`skills/antorbit-web-spec/SKILL.md`）：强约束统一的 **Slate + Sky 设计系统**、移动端/中文排版、4 类高频页面骨架（报告/看板/审批表/KV 工具），同时覆盖纯单文件 HTML、多文件静态站点与 Vite/Vue/React/Tailwind 构建项目。
 
 ### 步骤 1：安装 `uv`（提供 `uvx` 命令）
 
@@ -170,9 +172,25 @@ AntOrbit 插件包含两部分：
 ├── assets/
 │   └── logo.svg
 └── skills/
-    └── antorbit/
-        └── SKILL.md
+    ├── antorbit/
+    │   └── SKILL.md
+    └── antorbit-web-spec/
+        ├── SKILL.md
+        └── references/
+            ├── design-tokens.md
+            ├── frameworks-and-multifile.md
+            └── page-patterns.md
 ```
+
+> **推荐搭配安装的外部通用规范 Skill（可选）**：
+> AntOrbit 内置的 `antorbit-web-spec` 负责统一视觉风格、移动端中文排版与 AntOrbit 交互闭环；搭配以下官方/社区通用 Skill 可进一步强化现代 Web 原生特性与 UI 细节质检：
+> ```bash
+> # Google Chrome 现代 Web 平台与 Baseline 最佳实践
+> npx skills add GoogleChrome/modern-web-guidance
+>
+> # Vercel UI/UX 与无障碍细节审计清单
+> npx skills add vercel-labs/agent-skills --skill web-design-guidelines
+> ```
 
 ### 步骤 3：配置 `mcp_config.json`
 
